@@ -11,7 +11,7 @@ st.set_page_config(page_title="Sales Dashboard", layout="wide")
 # ---------------------------
 @st.cache_data
 def load_data():
-    df = pd.read_csv("data/superstore.csv", encoding='latin1')
+    df = pd.read_csv("data/superstore.csv")
 
     # Clean columns
     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
