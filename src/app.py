@@ -4,90 +4,78 @@ import plotly.express as px
 
 from model import train_models
 
+st.set_page_config(page_title="Sales Dashboard", layout="wide")
+
 # ---------------------------
-# LOAD DATA
+# LOAD DATA (FIXED PATH ✅)
 # ---------------------------
 @st.cache_data
 def load_data():
-    df = pd.read_csv("../data/superstore.csv", encoding='latin1')
+    df = pd.read_csv("data/superstore.csv", encoding='latin1')
 
-    df.columns = df.columns.str.encode('ascii', 'ignore').str.decode('ascii')
-    df.columns = df.columns.str.replace('.', ' ')
+    # Clean column names
     df.columns = df.columns.str.strip()
 
+    # Convert date
     df['Order Date'] = pd.to_datetime(df['Order Date'], errors='coerce')
-    df = df.dropna(subset=['Order Date'])
 
     return df
 
 df = load_data()
 
 # ---------------------------
-# TITLE
-# ---------------------------
-st.title("📊 Sales Dashboard with ML")
-
-# ---------------------------
 # TABS
 # ---------------------------
 tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "🤖 Prediction", "⚖️ Model Comparison"])
 
-# =========================================================
-# 📊 DASHBOARD
-# =========================================================
+# ===========================
+# 📊 DASHBOARD TAB
+# ===========================
 with tab1:
-    st.subheader("📊 Interactive Sales Dashboard")
+    st.title("📊 Interactive Sales Dashboard")
 
     col1, col2, col3 = st.columns(3)
-    col1.metric("💰 Total Sales", f"{df['Sales'].sum():,.0f}")
-    col2.metric("📈 Total Profit", f"{df['Profit'].sum():,.0f}")
-    col3.metric("📦 Total Orders", df.shape[0])
 
-    # Region chart (BLUE)
-    region_sales = df.groupby('Region')['Sales'].sum().reset_index()
+    col1.metric("Total Sales", f"{df['Sales'].sum():,.0f}")
+    col2.metric("Total Profit", f"{df['Profit'].sum():,.0f}")
+    col3.metric("Total Orders", df.shape[0])
+
+    # Sales by Region
+    region_sales = df.groupby("Region")["Sales"].sum().reset_index()
+
     fig1 = px.bar(
         region_sales,
-        x='Region',
-        y='Sales',
-        color='Region',
-        color_discrete_sequence=px.colors.sequential.Blues,
-        title="Sales by Region"
+        x="Region",
+        y="Sales",
+        color="Region",
+        title="Sales by Region",
+        color_discrete_sequence=px.colors.qualitative.Set2
     )
-    st.plotly_chart(fig1, width="stretch")
 
-    # Category chart (GREEN)
-    category_sales = df.groupby('Category')['Sales'].sum().reset_index()
-    fig2 = px.bar(
-        category_sales,
-        x='Category',
-        y='Sales',
-        color='Category',
-        color_discrete_sequence=px.colors.sequential.Greens,
-        title="Sales by Category"
-    )
-    st.plotly_chart(fig2, width="stretch")
+    st.plotly_chart(fig1, width='stretch')
 
-    # Monthly trend (PURPLE)
-    df['Month'] = df['Order Date'].dt.to_period('M').astype(str)
-    monthly_sales = df.groupby('Month')['Sales'].sum().reset_index()
+    # Monthly trend
+    df['Month'] = df['Order Date'].dt.month
+    monthly = df.groupby("Month")["Sales"].sum().reset_index()
 
-    fig3 = px.line(
-        monthly_sales,
-        x='Month',
-        y='Sales',
+    fig2 = px.line(
+        monthly,
+        x="Month",
+        y="Sales",
         markers=True,
-        title="Monthly Sales Trend"
+        title="Monthly Sales Trend",
+        color_discrete_sequence=["#FF5733"]
     )
-    fig3.update_traces(line_color="purple")
-    st.plotly_chart(fig3, width="stretch")
 
-# =========================================================
-# 🤖 PREDICTION
-# =========================================================
+    st.plotly_chart(fig2, width='stretch')
+
+# ===========================
+# 🤖 PREDICTION TAB
+# ===========================
 with tab2:
-    st.subheader("🤖 Sales Prediction")
+    st.title("🤖 Sales Category Prediction")
 
-    models, encoders, target_encoder, feature_importance = train_models()
+    models, encoders, target_encoder = train_models()
 
     model_choice = st.selectbox("Select Model", list(models.keys()))
     model, accuracy = models[model_choice]
@@ -108,52 +96,37 @@ with tab2:
     )
 
     if st.button("Predict"):
-        pred = model.predict(input_df)
-        result = target_encoder.inverse_transform(pred)
-        st.success(f"Predicted Category: {result[0]}")
+        prediction = model.predict(input_df)
+        result = target_encoder.inverse_transform(prediction)
+        st.success(f"Predicted Sales Category: {result[0]}")
 
-# =========================================================
-# ⚖️ MODEL COMPARISON + FEATURE IMPORTANCE
-# =========================================================
+# ===========================
+# ⚖️ MODEL COMPARISON
+# ===========================
 with tab3:
-    st.subheader("⚖️ Model Comparison")
+    st.title("⚖️ Model Comparison")
 
-    models, _, _, feature_importance = train_models()
+    models, _, _ = train_models()
 
-    model_names = []
-    accuracies = []
+    names = []
+    scores = []
 
     for name, (model, acc) in models.items():
-        model_names.append(name)
-        accuracies.append(acc)
+        names.append(name)
+        scores.append(acc)
 
-    comparison_df = pd.DataFrame({
-        "Model": model_names,
-        "Accuracy": accuracies
+    compare_df = pd.DataFrame({
+        "Model": names,
+        "Accuracy": scores
     })
 
-    st.dataframe(comparison_df)
-
-    # Accuracy chart (ORANGE)
-    fig4 = px.bar(
-        comparison_df,
-        x='Model',
-        y='Accuracy',
-        color='Model',
-        color_discrete_sequence=px.colors.sequential.Oranges,
-        title="Model Accuracy Comparison"
+    fig3 = px.bar(
+        compare_df,
+        x="Model",
+        y="Accuracy",
+        color="Model",
+        title="Model Accuracy Comparison",
+        color_discrete_sequence=px.colors.qualitative.Bold
     )
-    st.plotly_chart(fig4, width="stretch")
 
-    # Feature importance (RED)
-    st.subheader("📈 Feature Importance (Random Forest)")
-
-    fig5 = px.bar(
-        feature_importance,
-        x='Feature',
-        y='Importance',
-        color='Feature',
-        color_discrete_sequence=px.colors.sequential.Reds,
-        title="Feature Importance"
-    )
-    st.plotly_chart(fig5, width="stretch")
+    st.plotly_chart(fig3, width='stretch')
