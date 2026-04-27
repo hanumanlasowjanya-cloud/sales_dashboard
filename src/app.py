@@ -7,17 +7,17 @@ from model import train_models
 st.set_page_config(page_title="Sales Dashboard", layout="wide")
 
 # ---------------------------
-# LOAD DATA (FIXED PATH ✅)
+# LOAD DATA (ROBUST FIX ✅)
 # ---------------------------
 @st.cache_data
 def load_data():
     df = pd.read_csv("data/superstore.csv", encoding='latin1')
 
-    # Clean column names
-    df.columns = df.columns.str.strip()
+    # 🔥 CLEAN COLUMN NAMES (IMPORTANT)
+    df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
 
-    # Convert date
-    df['Order Date'] = pd.to_datetime(df['Order Date'], errors='coerce')
+    # ✅ Now safe access
+    df['order_date'] = pd.to_datetime(df['order_date'], errors='coerce')
 
     return df
 
@@ -29,39 +29,39 @@ df = load_data()
 tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "🤖 Prediction", "⚖️ Model Comparison"])
 
 # ===========================
-# 📊 DASHBOARD TAB
+# 📊 DASHBOARD
 # ===========================
 with tab1:
     st.title("📊 Interactive Sales Dashboard")
 
     col1, col2, col3 = st.columns(3)
 
-    col1.metric("Total Sales", f"{df['Sales'].sum():,.0f}")
-    col2.metric("Total Profit", f"{df['Profit'].sum():,.0f}")
+    col1.metric("Total Sales", f"{df['sales'].sum():,.0f}")
+    col2.metric("Total Profit", f"{df['profit'].sum():,.0f}")
     col3.metric("Total Orders", df.shape[0])
 
     # Sales by Region
-    region_sales = df.groupby("Region")["Sales"].sum().reset_index()
+    region_sales = df.groupby("region")["sales"].sum().reset_index()
 
     fig1 = px.bar(
         region_sales,
-        x="Region",
-        y="Sales",
-        color="Region",
+        x="region",
+        y="sales",
+        color="region",
         title="Sales by Region",
         color_discrete_sequence=px.colors.qualitative.Set2
     )
 
     st.plotly_chart(fig1, width='stretch')
 
-    # Monthly trend
-    df['Month'] = df['Order Date'].dt.month
-    monthly = df.groupby("Month")["Sales"].sum().reset_index()
+    # Monthly Trend
+    df['month'] = df['order_date'].dt.month
+    monthly = df.groupby("month")["sales"].sum().reset_index()
 
     fig2 = px.line(
         monthly,
-        x="Month",
-        y="Sales",
+        x="month",
+        y="sales",
         markers=True,
         title="Monthly Sales Trend",
         color_discrete_sequence=["#FF5733"]
@@ -70,7 +70,7 @@ with tab1:
     st.plotly_chart(fig2, width='stretch')
 
 # ===========================
-# 🤖 PREDICTION TAB
+# 🤖 PREDICTION
 # ===========================
 with tab2:
     st.title("🤖 Sales Category Prediction")
@@ -82,9 +82,9 @@ with tab2:
 
     st.write(f"Model Accuracy: {accuracy:.2f}")
 
-    region_input = st.selectbox("Region", df['Region'].unique())
-    category_input = st.selectbox("Category", df['Category'].unique())
-    ship_input = st.selectbox("Ship Mode", df['Ship Mode'].unique())
+    region_input = st.selectbox("Region", df['region'].unique())
+    category_input = st.selectbox("Category", df['category'].unique())
+    ship_input = st.selectbox("Ship Mode", df['ship_mode'].unique())
 
     region_val = encoders['Region'].transform([region_input])[0]
     category_val = encoders['Category'].transform([category_input])[0]
