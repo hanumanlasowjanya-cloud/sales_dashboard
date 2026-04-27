@@ -1,0 +1,27 @@
+Total Sales: 12642905
+
+Sales by Region:
+Region
+Africa             783776
+Canada              66932
+Caribbean          324281
+Central           2822399
+Central Asia       752839
+EMEA               806184
+East               678834
+North             1248192
+North Asia         848349
+Oceania           1100207
+South             1600960
+Southeast Asia     884438
+West               725514
+Name: Sales, dtype: int64
+
+Top Products:
+Product Name
+Apple Smart Phone, Full Size             86936
+Cisco Smart Phone, Full Size             76441
+Motorola Smart Phone, Full Size          73159
+Nokia Smart Phone, Full Size             71904
+Canon imageCLASS 2200 Advanced Copier    61600
+Name: Sales, dtype: int64
