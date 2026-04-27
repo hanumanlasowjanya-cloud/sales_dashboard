@@ -7,34 +7,38 @@ from model import train_models
 st.set_page_config(page_title="Sales Dashboard", layout="wide")
 
 # ---------------------------
-# LOAD DATA (ROBUST FIX ✅)
+# LOAD DATA (ULTIMATE FIX ✅)
 # ---------------------------
 @st.cache_data
 def load_data():
     df = pd.read_csv("data/superstore.csv", encoding='latin1')
 
-    # Clean column names
+    # Clean columns
     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
 
-    # 🔍 DEBUG: see actual columns (important once)
-    st.write("Columns in dataset:", df.columns)
+    # 🔍 AUTO DETECT COLUMNS
+    def find_col(keyword):
+        for col in df.columns:
+            if keyword in col:
+                return col
+        return None
 
-    # ✅ Find correct date column automatically
-    date_col = None
-    for col in df.columns:
-        if "date" in col:
-            date_col = col
-            break
+    sales_col = find_col("sales")
+    profit_col = find_col("profit")
+    region_col = find_col("region")
+    category_col = find_col("category")
+    ship_col = find_col("ship")
+    date_col = find_col("date")
 
-    # If found → convert
+    # Convert date
     if date_col:
         df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
-        df['month'] = df[date_col].dt.month
-    else:
-        st.error("No date column found in dataset!")
+        df["month"] = df[date_col].dt.month
 
-    return df
+    return df, sales_col, profit_col, region_col, category_col, ship_col
 
+
+df, sales_col, profit_col, region_col, category_col, ship_col = load_data()
 
 # ---------------------------
 # TABS
@@ -49,18 +53,18 @@ with tab1:
 
     col1, col2, col3 = st.columns(3)
 
-    col1.metric("Total Sales", f"{df['sales'].sum():,.0f}")
-    col2.metric("Total Profit", f"{df['profit'].sum():,.0f}")
+    col1.metric("Total Sales", f"{df[sales_col].sum():,.0f}")
+    col2.metric("Total Profit", f"{df[profit_col].sum():,.0f}")
     col3.metric("Total Orders", df.shape[0])
 
     # Sales by Region
-    region_sales = df.groupby("region")["sales"].sum().reset_index()
+    region_sales = df.groupby(region_col)[sales_col].sum().reset_index()
 
     fig1 = px.bar(
         region_sales,
-        x="region",
-        y="sales",
-        color="region",
+        x=region_col,
+        y=sales_col,
+        color=region_col,
         title="Sales by Region",
         color_discrete_sequence=px.colors.qualitative.Set2
     )
@@ -68,19 +72,19 @@ with tab1:
     st.plotly_chart(fig1, width='stretch')
 
     # Monthly Trend
-    df['month'] = df['order_date'].dt.month
-    monthly = df.groupby("month")["sales"].sum().reset_index()
+    if "month" in df.columns:
+        monthly = df.groupby("month")[sales_col].sum().reset_index()
 
-    fig2 = px.line(
-        monthly,
-        x="month",
-        y="sales",
-        markers=True,
-        title="Monthly Sales Trend",
-        color_discrete_sequence=["#FF5733"]
-    )
+        fig2 = px.line(
+            monthly,
+            x="month",
+            y=sales_col,
+            markers=True,
+            title="Monthly Sales Trend",
+            color_discrete_sequence=["#FF5733"]
+        )
 
-    st.plotly_chart(fig2, width='stretch')
+        st.plotly_chart(fig2, width='stretch')
 
 # ===========================
 # 🤖 PREDICTION
@@ -95,9 +99,9 @@ with tab2:
 
     st.write(f"Model Accuracy: {accuracy:.2f}")
 
-    region_input = st.selectbox("Region", df['region'].unique())
-    category_input = st.selectbox("Category", df['category'].unique())
-    ship_input = st.selectbox("Ship Mode", df['ship_mode'].unique())
+    region_input = st.selectbox("Region", df[region_col].unique())
+    category_input = st.selectbox("Category", df[category_col].unique())
+    ship_input = st.selectbox("Ship Mode", df[ship_col].unique())
 
     region_val = encoders['Region'].transform([region_input])[0]
     category_val = encoders['Category'].transform([category_input])[0]
