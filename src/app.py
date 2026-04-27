@@ -13,15 +13,28 @@ st.set_page_config(page_title="Sales Dashboard", layout="wide")
 def load_data():
     df = pd.read_csv("data/superstore.csv", encoding='latin1')
 
-    # 🔥 CLEAN COLUMN NAMES (IMPORTANT)
+    # Clean column names
     df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
 
-    # ✅ Now safe access
-    df['order_date'] = pd.to_datetime(df['order_date'], errors='coerce')
+    # 🔍 DEBUG: see actual columns (important once)
+    st.write("Columns in dataset:", df.columns)
+
+    # ✅ Find correct date column automatically
+    date_col = None
+    for col in df.columns:
+        if "date" in col:
+            date_col = col
+            break
+
+    # If found → convert
+    if date_col:
+        df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+        df['month'] = df[date_col].dt.month
+    else:
+        st.error("No date column found in dataset!")
 
     return df
 
-df = load_data()
 
 # ---------------------------
 # TABS
