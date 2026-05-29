@@ -92,7 +92,7 @@ with tab1:
 with tab2:
     st.title("🤖 Sales Category Prediction")
 
-    models, encoders, target_encoder = train_models()
+    models, encoders, target_encoder, region_col_m, category_col_m, ship_col_m = train_models()
 
     model_choice = st.selectbox("Select Model", list(models.keys()))
     model, accuracy = models[model_choice]
@@ -103,13 +103,17 @@ with tab2:
     category_input = st.selectbox("Category", df[category_col].unique())
     ship_input = st.selectbox("Ship Mode", df[ship_col].unique())
 
-    region_val = encoders['Region'].transform([region_input])[0]
-    category_val = encoders['Category'].transform([category_input])[0]
-    ship_val = encoders['Ship Mode'].transform([ship_input])[0]
+    region_val = encoders[region_col_m].transform([region_input])[0]
+    category_val = encoders[category_col_m].transform([category_input])[0]
+    ship_val = encoders[ship_col_m].transform([ship_input])[0]
 
     input_df = pd.DataFrame(
         [[region_val, category_val, ship_val]],
-        columns=['Region', 'Category', 'Ship Mode']
+        columns=[
+            region_col_m,
+            category_col_m,
+            ship_col_m
+        ]
     )
 
     if st.button("Predict"):
