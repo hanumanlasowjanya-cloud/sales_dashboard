@@ -7,16 +7,21 @@ from model import train_models
 st.set_page_config(page_title="Sales Dashboard", layout="wide")
 
 # ---------------------------
-# LOAD DATA (ULTIMATE FIX ✅)
+# LOAD DATA
 # ---------------------------
 @st.cache_data
 def load_data():
     df = pd.read_csv("data/superstore.csv")
 
     # Clean columns
-    df.columns = df.columns.str.strip().str.lower().str.replace(" ", "_")
+    df.columns = (
+        df.columns
+        .str.strip()
+        .str.lower()
+        .str.replace(" ", "_")
+    )
 
-    # 🔍 AUTO DETECT COLUMNS
+    # Auto detect columns
     def find_col(keyword):
         for col in df.columns:
             if keyword in col:
@@ -30,85 +35,169 @@ def load_data():
     ship_col = find_col("ship")
     date_col = find_col("date")
 
-    # Convert date
     if date_col:
-        df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+        df[date_col] = pd.to_datetime(
+            df[date_col],
+            errors="coerce"
+        )
+
         df["month"] = df[date_col].dt.month
 
-    return df, sales_col, profit_col, region_col, category_col, ship_col
+    return (
+        df,
+        sales_col,
+        profit_col,
+        region_col,
+        category_col,
+        ship_col
+    )
 
 
-df, sales_col, profit_col, region_col, category_col, ship_col = load_data()
+(
+    df,
+    sales_col,
+    profit_col,
+    region_col,
+    category_col,
+    ship_col
+) = load_data()
 
 # ---------------------------
 # TABS
 # ---------------------------
-tab1, tab2, tab3 = st.tabs(["📊 Dashboard", "🤖 Prediction", "⚖️ Model Comparison"])
+tab1, tab2, tab3 = st.tabs(
+    [
+        "📊 Dashboard",
+        "🤖 Prediction",
+        "⚖️ Model Comparison"
+    ]
+)
 
 # ===========================
-# 📊 DASHBOARD
+# DASHBOARD
 # ===========================
 with tab1:
+
     st.title("📊 Interactive Sales Dashboard")
 
     col1, col2, col3 = st.columns(3)
 
-    col1.metric("Total Sales", f"{df[sales_col].sum():,.0f}")
-    col2.metric("Total Profit", f"{df[profit_col].sum():,.0f}")
-    col3.metric("Total Orders", df.shape[0])
+    col1.metric(
+        "Total Sales",
+        f"{df[sales_col].sum():,.0f}"
+    )
+
+    col2.metric(
+        "Total Profit",
+        f"{df[profit_col].sum():,.0f}"
+    )
+
+    col3.metric(
+        "Total Orders",
+        df.shape[0]
+    )
 
     # Sales by Region
-    region_sales = df.groupby(region_col)[sales_col].sum().reset_index()
+    region_sales = (
+        df.groupby(region_col)[sales_col]
+        .sum()
+        .reset_index()
+    )
 
     fig1 = px.bar(
         region_sales,
         x=region_col,
         y=sales_col,
         color=region_col,
-        title="Sales by Region",
-        color_discrete_sequence=px.colors.qualitative.Set2
+        title="Sales by Region"
     )
 
-    st.plotly_chart(fig1, width='stretch')
+    st.plotly_chart(fig1, use_container_width=True)
 
-    # Monthly Trend
+    # Monthly Sales
     if "month" in df.columns:
-        monthly = df.groupby("month")[sales_col].sum().reset_index()
+
+        monthly_sales = (
+            df.groupby("month")[sales_col]
+            .sum()
+            .reset_index()
+        )
 
         fig2 = px.line(
-            monthly,
+            monthly_sales,
             x="month",
             y=sales_col,
             markers=True,
-            title="Monthly Sales Trend",
-            color_discrete_sequence=["#FF5733"]
+            title="Monthly Sales Trend"
         )
 
-        st.plotly_chart(fig2, width='stretch')
+        st.plotly_chart(
+            fig2,
+            use_container_width=True
+        )
 
 # ===========================
-# 🤖 PREDICTION
+# PREDICTION
 # ===========================
 with tab2:
+
     st.title("🤖 Sales Category Prediction")
 
-    models, encoders, target_encoder, region_col_m, category_col_m, ship_col_m = train_models()
+    (
+        models,
+        encoders,
+        target_encoder,
+        region_col_m,
+        category_col_m,
+        ship_col_m
+    ) = train_models()
 
-    model_choice = st.selectbox("Select Model", list(models.keys()))
+    model_choice = st.selectbox(
+        "Select Model",
+        list(models.keys())
+    )
+
     model, accuracy = models[model_choice]
 
-    st.write(f"Model Accuracy: {accuracy:.2f}")
+    st.success(
+        f"Model Accuracy: {accuracy:.2f}"
+    )
 
-    region_input = st.selectbox("Region", df[region_col].unique())
-    category_input = st.selectbox("Category", df[category_col].unique())
-    ship_input = st.selectbox("Ship Mode", df[ship_col].unique())
+    region_input = st.selectbox(
+        "Region",
+        sorted(df[region_col].dropna().unique())
+    )
 
-    region_val = encoders[region_col_m].transform([region_input])[0]
-    category_val = encoders[category_col_m].transform([category_input])[0]
-    ship_val = encoders[ship_col_m].transform([ship_input])[0]
+    category_input = st.selectbox(
+        "Category",
+        sorted(df[category_col].dropna().unique())
+    )
+
+    ship_input = st.selectbox(
+        "Ship Mode",
+        sorted(df[ship_col].dropna().unique())
+    )
+
+    region_val = encoders[
+        region_col_m
+    ].transform([region_input])[0]
+
+    category_val = encoders[
+        category_col_m
+    ].transform([category_input])[0]
+
+    ship_val = encoders[
+        ship_col_m
+    ].transform([ship_input])[0]
 
     input_df = pd.DataFrame(
-        [[region_val, category_val, ship_val]],
+        [
+            [
+                region_val,
+                category_val,
+                ship_val
+            ]
+        ],
         columns=[
             region_col_m,
             category_col_m,
@@ -117,37 +206,54 @@ with tab2:
     )
 
     if st.button("Predict"):
-        prediction = model.predict(input_df)
-        result = target_encoder.inverse_transform(prediction)
-        st.success(f"Predicted Sales Category: {result[0]}")
+
+        prediction = model.predict(
+            input_df
+        )
+
+        result = target_encoder.inverse_transform(
+            prediction
+        )
+
+        st.success(
+            f"Predicted Sales Category: {result[0]}"
+        )
 
 # ===========================
-# ⚖️ MODEL COMPARISON
+# MODEL COMPARISON
 # ===========================
 with tab3:
+
     st.title("⚖️ Model Comparison")
 
-    models, _, _ = train_models()
+    result = train_models()
 
-    names = []
-    scores = []
+    models = result[0]
 
-    for name, (model, acc) in models.items():
-        names.append(name)
-        scores.append(acc)
+    model_names = []
+    accuracies = []
 
-    compare_df = pd.DataFrame({
-        "Model": names,
-        "Accuracy": scores
-    })
+    for name, (model, score) in models.items():
+
+        model_names.append(name)
+        accuracies.append(score)
+
+    compare_df = pd.DataFrame(
+        {
+            "Model": model_names,
+            "Accuracy": accuracies
+        }
+    )
 
     fig3 = px.bar(
         compare_df,
         x="Model",
         y="Accuracy",
         color="Model",
-        title="Model Accuracy Comparison",
-        color_discrete_sequence=px.colors.qualitative.Bold
+        title="Model Accuracy Comparison"
     )
 
-    st.plotly_chart(fig3, width='stretch')
+    st.plotly_chart(
+        fig3,
+        use_container_width=True
+    )
